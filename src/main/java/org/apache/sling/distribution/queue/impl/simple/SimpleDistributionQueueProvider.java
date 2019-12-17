@@ -27,12 +27,14 @@ import java.io.FilenameFilter;
 import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.io.LineIterator;
 import org.apache.sling.commons.scheduler.ScheduleOptions;
 import org.apache.sling.commons.scheduler.Scheduler;
 import org.apache.sling.distribution.queue.spi.DistributionQueue;
+import org.apache.sling.distribution.queue.DistributionQueueEntry;
 import org.apache.sling.distribution.queue.DistributionQueueItem;
 import org.apache.sling.distribution.queue.impl.DistributionQueueProcessor;
 import org.apache.sling.distribution.queue.impl.DistributionQueueProvider;
@@ -152,7 +154,13 @@ public class SimpleDistributionQueueProvider implements DistributionQueueProvide
             ScheduleOptions options = scheduler.NOW(-1, 1)
                     .canRunConcurrently(false)
                     .name(getJobName(queueName));
-            scheduler.schedule(new SimpleDistributionQueueProcessor(getQueue(queueName), queueProcessor), options);
+            DistributionQueue queueImpl = getQueue(queueName);
+            Consumer<DistributionQueueEntry> processingAttemptRecorder = null;
+            if (queueImpl instanceof SimpleDistributionQueue) {
+                processingAttemptRecorder = ((SimpleDistributionQueue)queueImpl)::recordProcessingAttempt;
+            }
+            scheduler.schedule(new SimpleDistributionQueueProcessor(getQueue(queueName), queueProcessor, processingAttemptRecorder),
+                    options);
         }
 
     }

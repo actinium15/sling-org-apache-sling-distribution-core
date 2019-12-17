@@ -19,6 +19,8 @@
 package org.apache.sling.distribution.queue.impl.simple;
 
 import org.apache.sling.distribution.queue.spi.DistributionQueue;
+
+import java.util.function.Consumer;
 import org.apache.sling.distribution.queue.DistributionQueueEntry;
 import org.apache.sling.distribution.queue.impl.DistributionQueueProcessor;
 import org.slf4j.Logger;
@@ -32,23 +34,32 @@ public class SimpleDistributionQueueProcessor implements Runnable {
     private final Logger log = LoggerFactory.getLogger(getClass());
     private final DistributionQueue queue;
     private final DistributionQueueProcessor queueProcessor;
+    private Consumer<DistributionQueueEntry> recordProcessingAttempt;
 
     public SimpleDistributionQueueProcessor(DistributionQueue queue,
-                                            DistributionQueueProcessor queueProcessor) {
+                                            DistributionQueueProcessor queueProcessor,
+                                            Consumer<DistributionQueueEntry> processingAttemptRecorder) {
         this.queue = queue;
         this.queueProcessor = queueProcessor;
+        this.recordProcessingAttempt = (null != processingAttemptRecorder)?
+                processingAttemptRecorder:
+                (entry) -> {};
     }
 
     public void run() {
         try {
             DistributionQueueEntry entry;
             while ((entry = queue.getHead()) != null) {
-                if (queueProcessor.process(queue.getName(), entry)) {
-                    if (queue.remove(entry.getId()) != null) {
-                        log.debug("item {} processed and removed from the queue", entry.getItem());
+                try {
+                    if (queueProcessor.process(queue.getName(), entry)) {
+                        if (queue.remove(entry.getId()) != null) {
+                            log.debug("item {} processed and removed from the queue", entry.getItem());
+                        }
+                    } else {
+                        log.warn("processing of item {} failed", entry.getId());
                     }
-                } else {
-                    log.warn("processing of item {} failed", entry.getId());
+                } finally {
+                    this.recordProcessingAttempt.accept(entry);
                 }
             }
         } catch (Exception e) {

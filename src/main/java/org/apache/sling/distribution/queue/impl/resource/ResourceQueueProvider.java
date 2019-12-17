@@ -23,6 +23,7 @@ import org.apache.sling.api.resource.ResourceResolverFactory;
 import org.apache.sling.commons.scheduler.ScheduleOptions;
 import org.apache.sling.commons.scheduler.Scheduler;
 import org.apache.sling.distribution.common.DistributionException;
+import org.apache.sling.distribution.queue.DistributionQueueEntry;
 import org.apache.sling.distribution.queue.DistributionQueueType;
 import org.apache.sling.distribution.queue.impl.DistributionQueueProcessor;
 import org.apache.sling.distribution.queue.impl.DistributionQueueProvider;
@@ -39,6 +40,7 @@ import java.util.Dictionary;
 import java.util.Hashtable;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
 
 public class ResourceQueueProvider implements DistributionQueueProvider {
     public static final String TYPE = "resource";
@@ -105,7 +107,13 @@ public class ResourceQueueProvider implements DistributionQueueProvider {
                         .canRunConcurrently(false)
                         .onSingleInstanceOnly(true)
                         .name(getJobName(queueName));
-                scheduler.schedule(new SimpleDistributionQueueProcessor(getQueue(queueName), queueProcessor), options);
+                DistributionQueue queueImpl = getQueue(queueName);
+                Consumer<DistributionQueueEntry> processingAttemptRecorder = null;
+                if (queueImpl instanceof ActiveResourceQueue) {
+                    processingAttemptRecorder = ((ActiveResourceQueue)queueImpl)::recordProcessingAttempt;
+                }
+                scheduler.schedule(new SimpleDistributionQueueProcessor(queueImpl, queueProcessor, processingAttemptRecorder),
+                        options);
             }
         } else {
             throw new DistributionException(new UnsupportedOperationException("enable Processing not supported for Passive Queues"));

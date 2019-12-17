@@ -107,9 +107,6 @@ public class SimpleDistributionQueue implements DistributionQueue {
         DistributionQueueItem element = queue.peek();
         if (element != null) {
             DistributionQueueItemStatus itemState = statusMap.get(element);
-            statusMap.put(element, new DistributionQueueItemStatus(itemState.getEntered(),
-                    itemState.getItemState(),
-                    itemState.getAttempts() + 1, name));
 
             return new DistributionQueueEntry(element.getPackageId(), element, itemState);
         }
@@ -211,4 +208,10 @@ public class SimpleDistributionQueue implements DistributionQueue {
         return removedEntries;
     }
 
+    public void recordProcessingAttempt(@NotNull DistributionQueueEntry entry) {
+        statusMap.computeIfPresent(entry.getItem(), (item, status) -> {
+            return new DistributionQueueItemStatus(status.getEntered(),
+                    status.getItemState(), status.getAttempts() + 1, status.getQueueName());
+        });
+    }
 }

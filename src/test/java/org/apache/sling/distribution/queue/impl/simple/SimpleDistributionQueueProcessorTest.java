@@ -29,7 +29,6 @@ import org.apache.sling.distribution.queue.DistributionQueueEntry;
 import org.apache.sling.distribution.queue.DistributionQueueItem;
 import org.apache.sling.distribution.queue.impl.DistributionQueueProcessor;
 import org.junit.Test;
-
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -43,7 +42,7 @@ public class SimpleDistributionQueueProcessorTest {
         DistributionQueue queue = mock(DistributionQueue.class);
         DistributionQueueProcessor queueProcessor = mock(DistributionQueueProcessor.class);
         SimpleDistributionQueueProcessor simpleDistributionQueueProcessor = new SimpleDistributionQueueProcessor(
-                queue, queueProcessor);
+                queue, queueProcessor, null);
         simpleDistributionQueueProcessor.run();
     }
 
@@ -57,7 +56,7 @@ public class SimpleDistributionQueueProcessorTest {
         when(queueProvider.getQueues()).thenReturn(queues);
         DistributionQueueProcessor queueProcessor = mock(DistributionQueueProcessor.class);
         SimpleDistributionQueueProcessor simpleDistributionQueueProcessor = new SimpleDistributionQueueProcessor(
-                queue, queueProcessor);
+                queue, queueProcessor, null);
         simpleDistributionQueueProcessor.run();
     }
 
@@ -74,7 +73,7 @@ public class SimpleDistributionQueueProcessorTest {
         when(queueProvider.getQueues()).thenReturn(queues);
         DistributionQueueProcessor queueProcessor = mock(DistributionQueueProcessor.class);
         SimpleDistributionQueueProcessor simpleDistributionQueueProcessor = new SimpleDistributionQueueProcessor(
-                queue, queueProcessor);
+                queue, queueProcessor, queue::recordProcessingAttempt);
         simpleDistributionQueueProcessor.run();
     }
 }

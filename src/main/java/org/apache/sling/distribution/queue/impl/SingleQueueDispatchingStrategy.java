@@ -18,14 +18,47 @@
  */
 package org.apache.sling.distribution.queue.impl;
 
+import java.util.Collections;
+import org.apache.sling.distribution.common.DistributionException;
+import org.apache.sling.distribution.packaging.DistributionPackage;
+import org.apache.sling.distribution.packaging.impl.SharedDistributionPackage;
+import org.apache.sling.distribution.queue.DistributionQueueItem;
+import org.apache.sling.distribution.queue.DistributionQueueItemState;
+import org.apache.sling.distribution.queue.DistributionQueueItemStatus;
+import org.apache.sling.distribution.queue.spi.DistributionQueue;
+import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * The default strategy for delivering packages to queues. Each agent just manages a single queue,
  * no failure / stuck handling where each package is put regardless of anything.
  */
 public class SingleQueueDispatchingStrategy extends MultipleQueueDispatchingStrategy {
 
+    private final Logger log = LoggerFactory.getLogger(getClass());
+    private static final String QUEUE_NAME = DistributionQueueDispatchingStrategy.DEFAULT_QUEUE_NAME;
+
     public SingleQueueDispatchingStrategy() {
-        super(new String[]{DistributionQueueDispatchingStrategy.DEFAULT_QUEUE_NAME});
+        super(new String[]{QUEUE_NAME});
     }
 
+    @Override
+    public Iterable<DistributionQueueItemStatus> add(@NotNull DistributionPackage distributionPackage,
+            @NotNull DistributionQueueProvider queueProvider) throws DistributionException {
+        if (!(distributionPackage instanceof SharedDistributionPackage)) {
+            throw new DistributionException("distribution package must be a shared package to be added in multiple queues");
+        }
+
+        DistributionQueueItem queueItem = getItem(distributionPackage);
+
+        DistributionQueue queue = queueProvider.getQueue(QUEUE_NAME);
+        DistributionQueueItemStatus status = addItemToQueue(queueItem, queue);
+        if (null == status) {
+            status = new DistributionQueueItemStatus(DistributionQueueItemState.ERROR, QUEUE_NAME);
+            log.error("cannot add package {} to queue {}", distributionPackage.getId(), QUEUE_NAME);
+        }
+
+        return Collections.singletonList(status);
+    }
 }
